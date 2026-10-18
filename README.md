@@ -90,12 +90,25 @@ python -m unittest discover -s tests -v
 SKILL.md                 Agent 的制作入口
 agents/openai.yaml       Codex 技能名称与提示词
 references/              模板制作、角色制作和工具说明
-scripts/                 像素工具与审阅页工具
-tests/                   像素约束测试
+scripts/                 像素工具、SkinBuilder 核心与 3D 渲染工具
+tests/                   像素约束测试与 SkinBuilder 单元测试
 assets/templates/        模板目录、历史候选与冻结版本
 assets/fixtures/         工具复现所需的演示样本
 assets/sources/          指南与精确提取所需的参考素材
 assets/vendor/           本地 3D 渲染库及许可说明
+examples/                实战工程化案例（如 Re:Zero 碧翠丝高精皮肤与渲染看板）
+docs/                    发布说明与二次元高精皮肤设计与避坑指南
+```
+
+## 工程化进阶工具与案例
+
+- **实战案例**：查看 `examples/beatrice/`，包含完整的《Re:Zero》碧翠丝 64×64 高精皮肤、生成脚本、3D 审阅页与高质量渲染。
+- **设计避坑指南**：阅读 `docs/ANIME_SKIN_GUIDE.md`，总结了 8×8 幼态面容法则、水灵大眼高光结构、4 阶奶油香草金防发脏调色法、双层立体（Base+Outer）服装层次等实战经验。
+- **程序化构建 API**：`scripts/skin_builder.py` 提供了面向代码与 Agent 的高阶链式构建器。
+- **自动化无头 3D 渲染**：`scripts/render_showcase.py` 支持直接调用本地 Chromium/Edge 生成 3 视角 1260×680 渲染看板大图：
+
+```powershell
+python scripts/render_showcase.py --skin examples/beatrice/beatrice_skin.png --output showcase.png --title "Re:Zero Beatrice"
 ```
 
 发布副本移除了历史记录中的私人称谓、聊天原句和本机路径；冻结模板的像素定义、配色、保护区及其哈希保持不变。历史审阅记录的范围见 [发布说明](docs/publication.md)。第三方渲染库的许可说明保留在 `assets/vendor/`；参考素材的原有署名与来源说明保持原样。
