@@ -15,7 +15,7 @@ from prefabs import (
     apply_twintails,
     apply_lolita_skirt,
     apply_puff_sleeves,
-    apply_ribbon_sash,
+    apply_corset_torso,
 )
 
 def test_prefabs_standalone():
@@ -26,7 +26,7 @@ def test_prefabs_standalone():
     apply_twintails(sb, pal)
     apply_lolita_skirt(sb, pal)
     apply_puff_sleeves(sb, pal)
-    apply_ribbon_sash(sb, pal)
+    apply_corset_torso(sb, pal)
     val = sb.validate()
     assert val["passed"] is True, f"Validation failed: {val.get('errors')}"
     print("[TEST PASSED] test_prefabs_standalone (All 5 prefabs validated)")

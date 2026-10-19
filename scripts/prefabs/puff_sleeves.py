@@ -1,4 +1,4 @@
-"""Puff Sleeves Prefab (3D Outer Layer +0.5px Volumetric Sleeves for Alex Slim Model)."""
+"""Puff Sleeves Prefab (Reference-Accurate Bare Upper Arm + Floating Puff Shoulder + Bell Cuff)."""
 
 from typing import Tuple, List, Optional
 import sys
@@ -9,41 +9,38 @@ from skin_builder import SkinBuilder
 from moa.spec_schema import PaletteSpec
 
 Color = Tuple[int, int, int, int]
-TRANSPARENT: Color = (0, 0, 0, 0)
+TRANS: Color = (0, 0, 0, 0)
 
 def apply_puff_sleeves(
     builder: SkinBuilder,
     palette: PaletteSpec
 ) -> SkinBuilder:
-    """Apply Victorian puff sleeves onto both arms (base + outer 3D layers)."""
+    """Apply reference-accurate sleeves: 3D puff shoulder, bare skin mid arm, wine lace bell cuff."""
     cp = palette.cloth_primary        # Rose crimson
     cs = palette.cloth_secondary      # Pink accent
     cd = palette.cloth_shadow         # Deep wine shadow
-    ca = palette.cloth_accent         # Gold
-    w = (255, 255, 255, 255)          # White lace
-    ws = (235, 230, 240, 255)         # Lace soft shadow
-    wd = (210, 205, 218, 255)         # Lace deep shadow
-    s = palette.skin                  # Skin
-    t = TRANSPARENT
+    w  = (255, 255, 255, 255)         # White lace
+    ws = (235, 228, 238, 255)        # Lace soft shadow
+    wd = (205, 198, 212, 255)        # Lace deep shadow
+    s  = palette.skin                 # Porcelain skin
+    sb = palette.skin_blush           # Elbow/blush accent
+    t  = TRANS
 
     # Slim Alex Arm is 3x12x4 (width=3, height=12, depth=4)
-    # Front/Back are 3x12; Left/Right are 4x12; Top/Bottom are 3x4
-
-    # Arm Top (3x4) Base & Outer
+    # Top/Bottom: 3x4
     a_top_base = [
-        [w,  ws, w ],
+        [w,  w,  w ],
         [cp, cp, cp],
         [cp, cd, cp],
         [cd, cd, cd],
     ]
     a_top_outer = [
         [w,  w,  w ],
+        [cp, cs, cp],
         [cp, cp, cp],
-        [t,  t,  t ],
         [w,  w,  w ],
     ]
 
-    # Arm Bottom (3x4) Base - Porcelain wrist/palm
     a_bottom_base = [
         [s,  s,  s ],
         [s,  s,  s ],
@@ -51,100 +48,103 @@ def apply_puff_sleeves(
         [wd, ws, wd],
     ]
 
-    # Arm Front (3x12) Base
-    # Rows 0-3: Puff base, Rows 4-8: Mid sleeve, Rows 9-10: Lace cuff, Row 11: Hand
+    # Front (3x12)
+    # Rows 0-2: Puff top & ruffle
+    # Rows 3-7: Porcelain bare arm! (Elegant loli skin tone with subtle shadow)
+    # Rows 8-10: Bell sleeve & ruffled white lace cuff
+    # Row 11: Dainty hand
     a_front_base = [
-        [w,  ws, w ],   # row 0: lace shoulder rim
-        [cp, cp, cp],   # row 1: puff top
-        [cp, cd, cp],   # row 2: puff swell
-        [w,  w,  w ],   # row 3: lace armband band
-        [cd, cp, cd],   # row 4: forearm sleeve
-        [cp, cd, cp],   # row 5: forearm sleeve
-        [cd, cp, cd],   # row 6: forearm sleeve
-        [cp, cd, cd],   # row 7: sleeve fold
-        [cd, cd, cd],   # row 8: sleeve taper
-        [w,  w,  w ],   # row 9: flared lace cuff
-        [ws, wd, ws],   # row 10: cuff shadow
-        [s,  s,  s ],   # row 11: dainty hand
+        [w,  w,  w ],   # row 0: lace shoulder collar
+        [cp, cs, cp],   # row 1: puff top
+        [w,  w,  w ],   # row 2: puff lower ruffle
+        [s,  s,  s ],   # row 3: upper bare arm
+        [s,  s,  s ],   # row 4: mid bare arm
+        [s,  sb, s ],   # row 5: elbow soft blush
+        [s,  s,  s ],   # row 6: lower arm
+        [s,  s,  s ],   # row 7: wrist
+        [cp, cs, cp],   # row 8: flared bell sleeve top
+        [cd, cp, cd],   # row 9: sleeve fold
+        [w,  w,  w ],   # row 10: white lace cuff edge
+        [s,  s,  s ],   # row 11: delicate hand
     ]
 
-    # Arm Front (3x12) Outer (3D Floating Layer +0.5px)
+    # Front Outer (3x12) - 3D Volume on Shoulder and Cuff Flare!
     a_front_outer = [
         [w,  w,  w ],   # row 0: 3D lace rim
-        [cp, cp, cp],   # row 1: 3D puff volume
-        [cp, cd, cp],   # row 2: 3D puff volume
-        [w,  w,  w ],   # row 3: 3D armband
+        [cp, cs, cp],   # row 1: 3D puff volume
+        [w,  w,  w ],   # row 2: 3D ruffle
+        [t,  t,  t ],   # row 3: bare arm flush
         [t,  t,  t ],   # row 4: flush
         [t,  t,  t ],   # row 5: flush
         [t,  t,  t ],   # row 6: flush
-        [cp, cp, cp],   # row 7: 3D lower bell flare
-        [cp, cd, cp],   # row 8: 3D bell flare
-        [w,  w,  w ],   # row 9: 3D ruffled cuff flare
-        [ws, ws, ws],   # row 10: 3D cuff edge
-        [t,  t,  t ],   # row 11: hand exposed
+        [t,  t,  t ],   # row 7: flush
+        [cp, cs, cp],   # row 8: 3D bell cuff flare
+        [cd, cp, cd],   # row 9: 3D bell cuff flare
+        [w,  ws, w ],   # row 10: 3D ruffled lace edge
+        [t,  t,  t ],   # row 11: hand flush
     ]
 
-    # Arm Back (3x12) Base
+    # Back (3x12) Base
     a_back_base = [
-        [w,  ws, w ],
+        [w,  w,  w ],
         [cp, cd, cp],
+        [w,  w,  w ],
+        [s,  s,  s ],
+        [s,  s,  s ],
+        [s,  s,  s ],
+        [s,  s,  s ],
+        [s,  s,  s ],
+        [cd, cp, cd],
         [cd, cd, cd],
         [w,  w,  w ],
-        [cd, cp, cd],
-        [cp, cd, cp],
-        [cd, cp, cd],
-        [cd, cd, cd],
-        [cd, cd, cd],
-        [w,  w,  w ],
-        [ws, wd, ws],
         [s,  s,  s ],
     ]
 
-    # Arm Back (3x12) Outer
+    # Back Outer (3x12)
     a_back_outer = [
         [w,  w,  w ],
         [cp, cd, cp],
-        [cd, cd, cd],
         [w,  w,  w ],
         [t,  t,  t ],
         [t,  t,  t ],
         [t,  t,  t ],
-        [cp, cd, cp],
+        [t,  t,  t ],
+        [t,  t,  t ],
+        [cd, cp, cd],
         [cd, cd, cd],
-        [w,  w,  w ],
-        [ws, ws, ws],
+        [w,  ws, w ],
         [t,  t,  t ],
     ]
 
-    # Arm Sides (4x12) Base
+    # Sides (4x12) Base
     a_side_base = [
-        [w,  ws, ws, w ],
-        [cp, cp, cd, cp],
-        [cp, cd, cd, cd],
         [w,  w,  w,  w ],
-        [cd, cp, cp, cd],
-        [cp, cd, cd, cp],
-        [cd, cp, cp, cd],
-        [cd, cd, cd, cd],
+        [cp, cs, cp, cd],
+        [w,  w,  w,  w ],
+        [s,  s,  s,  s ],
+        [s,  s,  s,  s ],
+        [s,  s,  sb, s ],
+        [s,  s,  s,  s ],
+        [s,  s,  s,  s ],
+        [cp, cs, cp, cd],
         [cd, cd, cd, cd],
         [w,  w,  w,  w ],
-        [ws, wd, wd, ws],
         [s,  s,  s,  s ],
     ]
 
-    # Arm Sides (4x12) Outer
+    # Sides (4x12) Outer
     a_side_outer = [
         [w,  w,  w,  w ],
-        [cp, cp, cd, cp],
-        [cp, cd, cd, cd],
+        [cp, cs, cp, cd],
         [w,  w,  w,  w ],
         [t,  t,  t,  t ],
         [t,  t,  t,  t ],
         [t,  t,  t,  t ],
-        [cp, cp, cd, cp],
-        [cp, cd, cd, cd],
-        [w,  w,  w,  w ],
-        [ws, ws, ws, ws],
+        [t,  t,  t,  t ],
+        [t,  t,  t,  t ],
+        [cp, cs, cp, cd],
+        [cd, cd, cd, cd],
+        [w,  ws, ws, w ],
         [t,  t,  t,  t ],
     ]
 
