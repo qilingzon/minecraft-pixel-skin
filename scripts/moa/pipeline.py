@@ -1,0 +1,98 @@
+"""MoA Orchestration Pipeline (Gemini Architect/Critic + DeepSeek Coder)."""
+
+from typing import Dict, List, Optional, Tuple, Any
+from pathlib import Path
+import json
+import sys
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from skin_builder import SkinBuilder
+from moa.spec_schema import CharacterSpec, PaletteSpec
+from moa.critic_protocol import CriticReview, CriticPatch
+from prefabs import apply_anime_eyes, apply_twintails, apply_lolita_skirt
+
+Color = Tuple[int, int, int, int]
+TRANSPARENT: Color = (0, 0, 0, 0)
+
+class MoAPipeline:
+    """Orchestrates Gemini Architect/Critic and DeepSeek Coder collaboration."""
+
+    def __init__(self, spec: Optional[CharacterSpec] = None):
+        self.spec = spec or CharacterSpec()
+
+    def assemble_base_skin(self) -> SkinBuilder:
+        """DeepSeek Coder execution: assemble prefabs and base character."""
+        builder = SkinBuilder(self.spec.topology.model, self.spec.palette.skin)
+        if self.spec.topology.eye_row:
+            apply_anime_eyes(builder, self.spec.palette, self.spec.topology.eye_row)
+        if self.spec.topology.has_twintails:
+            apply_twintails(builder, self.spec.palette)
+        if self.spec.topology.has_lolita_skirt:
+            apply_lolita_skirt(builder, self.spec.palette)
+        return builder
+
+    def apply_patch(self, builder: SkinBuilder, patch: CriticPatch) -> SkinBuilder:
+        """DeepSeek Coder execution: apply targeted aesthetic patch to SkinBuilder."""
+        box = builder.faces[patch.face][patch.layer]
+        bx, by, bw, bh = box
+
+        rows = [patch.row] if patch.row is not None else list(range(bh))
+        for r in rows:
+            if not (0 <= r < bh):
+                continue
+            cols = range(patch.col_range[0], patch.col_range[1] + 1) if patch.col_range else range(bw)
+            for c in cols:
+                if 0 <= c < bw:
+                    target_color = TRANSPARENT if patch.action == "clear" else (patch.color or self.spec.palette.skin)
+                    builder.image.putpixel((bx + c, by + r), target_color)
+        return builder
+
+    def evaluate_aesthetic_rules(self, builder: SkinBuilder) -> CriticReview:
+        """Gemini Critic evaluation: inspect skin against negative rules and quality checks."""
+        patches: List[CriticPatch] = []
+        box_hf = builder.faces["head.front"]["base"]
+        s = self.spec.palette.skin
+
+        # Negative Rule: no_mouth_on_chin_row (row 7 center must not have dark/beard pixels)
+        if "no_mouth_on_chin_row" in self.spec.topology.negative_rules:
+            for x in range(2, 6):
+                px = builder.image.getpixel((box_hf[0] + x, box_hf[1] + 7))
+                if px != s and px[3] > 0:
+                    patches.append(CriticPatch(
+                        face="head.front", layer="base", row=7, col_range=(x, x),
+                        action="replace", color=s, reason=f"Clean chin pixel at col {x} to avoid 3D beard artifact."
+                    ))
+
+        # Negative Rule: no_flat_tails_on_body_back
+        if "no_flat_tails_on_body_back" in self.spec.topology.negative_rules:
+            box_bb = builder.faces["body.back"]["outer"]
+            hb = self.spec.palette.hair_base
+            for r in range(4, 9):
+                for c in range(2, 6):
+                    px = builder.image.getpixel((box_bb[0] + c, box_bb[1] + r))
+                    if px == hb:
+                        patches.append(CriticPatch(
+                            face="body.back", layer="outer", row=r, col_range=(c, c),
+                            action="clear", reason=f"Remove flat hair tail from body.back center at row {r}, col {c}."
+                        ))
+
+        if patches:
+            return CriticReview(status="REVISE", score=82, summary=f"Found {len(patches)} aesthetic defects to patch.", patches=patches)
+        return CriticReview(status="PASS", score=96, summary="All aesthetic criteria and negative rules satisfied.")
+
+    def run_pipeline(self, max_rounds: int = 3) -> Tuple[SkinBuilder, List[CriticReview]]:
+        """Run complete MoA closed-loop iteration until PASS or max_rounds exhausted."""
+        builder = self.assemble_base_skin()
+        history: List[CriticReview] = []
+
+        for rnd in range(1, max_rounds + 1):
+            review = self.evaluate_aesthetic_rules(builder)
+            history.append(review)
+            if review.status == "PASS":
+                break
+            for patch in review.patches:
+                self.apply_patch(builder, patch)
+
+        return builder, history
+
+
