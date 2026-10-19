@@ -9,7 +9,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from skin_builder import SkinBuilder
 from moa.spec_schema import CharacterSpec, PaletteSpec
 from moa.critic_protocol import CriticReview, CriticPatch
-from prefabs import apply_anime_eyes, apply_twintails, apply_lolita_skirt
+from prefabs import (
+    apply_anime_eyes,
+    apply_twintails,
+    apply_lolita_skirt,
+    apply_puff_sleeves,
+    apply_ribbon_sash,
+)
 
 Color = Tuple[int, int, int, int]
 TRANSPARENT: Color = (0, 0, 0, 0)
@@ -21,14 +27,29 @@ class MoAPipeline:
         self.spec = spec or CharacterSpec()
 
     def assemble_base_skin(self) -> SkinBuilder:
-        """DeepSeek Coder execution: assemble prefabs and base character."""
+        """DeepSeek Coder execution: assemble full multi-layer skin with zero-exposed-skin."""
         builder = SkinBuilder(self.spec.topology.model, self.spec.palette.skin)
-        if self.spec.topology.eye_row:
-            apply_anime_eyes(builder, self.spec.palette, self.spec.topology.eye_row)
-        if self.spec.topology.has_twintails:
-            apply_twintails(builder, self.spec.palette)
+
+        # 1. Multi-layer lolita dress & petticoat (establishes base torso & legs, prevents any bare skin)
         if self.spec.topology.has_lolita_skirt:
             apply_lolita_skirt(builder, self.spec.palette)
+
+        # 2. Volumetric 3D puff sleeves (arms base & 3D outer layer)
+        if getattr(self.spec.topology, "has_puff_sleeves", True):
+            apply_puff_sleeves(builder, self.spec.palette)
+
+        # 3. Sparkling anime eyes, facial features & bangs
+        if self.spec.topology.eye_row:
+            apply_anime_eyes(builder, self.spec.palette, self.spec.topology.eye_row)
+
+        # 4. Stepped 45-degree 3D spiral twintails
+        if self.spec.topology.has_twintails:
+            apply_twintails(builder, self.spec.palette)
+
+        # 5. Diagonal candy ribbon sash & gold-clasped capelet
+        if getattr(self.spec.topology, "has_ribbon_sash", True):
+            apply_ribbon_sash(builder, self.spec.palette)
+
         return builder
 
     def apply_patch(self, builder: SkinBuilder, patch: CriticPatch) -> SkinBuilder:
@@ -53,17 +74,17 @@ class MoAPipeline:
         box_hf = builder.faces["head.front"]["base"]
         s = self.spec.palette.skin
 
-        # Negative Rule: no_mouth_on_chin_row (row 7 center must not have dark/beard pixels)
+        # Negative Rule 1: no_mouth_on_chin_row (row 7 center must not have dark/beard pixels)
         if "no_mouth_on_chin_row" in self.spec.topology.negative_rules:
             for x in range(2, 6):
                 px = builder.image.getpixel((box_hf[0] + x, box_hf[1] + 7))
-                if px != s and px[3] > 0:
+                if px != s and px[3] > 0 and px != self.spec.palette.skin_blush:
                     patches.append(CriticPatch(
                         face="head.front", layer="base", row=7, col_range=(x, x),
                         action="replace", color=s, reason=f"Clean chin pixel at col {x} to avoid 3D beard artifact."
                     ))
 
-        # Negative Rule: no_flat_tails_on_body_back
+        # Negative Rule 2: no_flat_tails_on_body_back
         if "no_flat_tails_on_body_back" in self.spec.topology.negative_rules:
             box_bb = builder.faces["body.back"]["outer"]
             hb = self.spec.palette.hair_base
@@ -76,9 +97,40 @@ class MoAPipeline:
                             action="clear", reason=f"Remove flat hair tail from body.back center at row {r}, col {c}."
                         ))
 
+        # Negative Rule 3: no_bare_skin_on_torso (rows 2-11 on body.front base must NOT be raw bare skin)
+        if "no_bare_skin_on_torso" in self.spec.topology.negative_rules:
+            box_bf = builder.faces["body.front"]["base"]
+            petticoat_fill = (254, 250, 242, 255)
+            for r in range(2, 12):
+                for c in range(8):
+                    px = builder.image.getpixel((box_bf[0] + c, box_bf[1] + r))
+                    if px == s:
+                        patches.append(CriticPatch(
+                            face="body.front", layer="base", row=r, col_range=(c, c),
+                            action="replace", color=petticoat_fill,
+                            reason=f"Fill bare skin on body.front base at row {r}, col {c} with ivory petticoat frill."
+                        ))
+
+        # Negative Rule 4: must_have_puff_sleeves (rightArm.outer rows 0-3 must have volumetric pixels)
+        if "must_have_puff_sleeves" in self.spec.topology.negative_rules:
+            box_ra_o = builder.faces["rightArm.front"]["outer"]
+            non_trans = 0
+            for r in range(4):
+                for c in range(3):
+                    px = builder.image.getpixel((box_ra_o[0] + c, box_ra_o[1] + r))
+                    if px[3] > 0:
+                        non_trans += 1
+            if non_trans < 6:
+                patches.append(CriticPatch(
+                    face="rightArm.front", layer="outer", row=1, col_range=(0, 2),
+                    action="replace", color=self.spec.palette.cloth_primary,
+                    reason="Restore 3D outer puff sleeve volume on rightArm."
+                ))
+
         if patches:
-            return CriticReview(status="REVISE", score=82, summary=f"Found {len(patches)} aesthetic defects to patch.", patches=patches)
-        return CriticReview(status="PASS", score=96, summary="All aesthetic criteria and negative rules satisfied.")
+            score = max(50, 100 - len(patches) * 5)
+            return CriticReview(status="REVISE", score=score, summary=f"Found {len(patches)} aesthetic defects to patch.", patches=patches)
+        return CriticReview(status="PASS", score=98, summary="All aesthetic criteria, negative rules, and zero-bare-skin constraints satisfied.")
 
     def run_pipeline(self, max_rounds: int = 3) -> Tuple[SkinBuilder, List[CriticReview]]:
         """Run complete MoA closed-loop iteration until PASS or max_rounds exhausted."""
@@ -94,5 +146,3 @@ class MoAPipeline:
                 self.apply_patch(builder, patch)
 
         return builder, history
-
-

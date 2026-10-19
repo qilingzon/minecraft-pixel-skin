@@ -28,10 +28,14 @@ class TopologySpec:
     eye_row: int = 4
     has_twintails: bool = True
     has_lolita_skirt: bool = True
+    has_puff_sleeves: bool = True
+    has_ribbon_sash: bool = True
     negative_rules: List[str] = field(default_factory=lambda: [
         "no_mouth_on_chin_row",
         "no_flat_tails_on_body_back",
-        "no_dithering_on_face"
+        "no_dithering_on_face",
+        "no_bare_skin_on_torso",
+        "must_have_puff_sleeves"
     ])
 
 @dataclass
@@ -65,4 +69,3 @@ class CharacterSpec:
     @classmethod
     def from_json(cls, json_str: str) -> "CharacterSpec":
         return cls.from_dict(json.loads(json_str))
-
