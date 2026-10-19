@@ -38,3 +38,11 @@ python examples/beatrice/generate_beatrice.py
 # 2. 自动生成 3D 渲染看板
 python scripts/render_showcase.py --skin examples/beatrice/beatrice_skin.png --output examples/beatrice/beatrice_3d_render.png --title "Re:Zero 碧翠丝 (Beatrice) · Minecraft 64×64 高精皮肤"
 ```
+
+## Blockbench 3D 工程
+
+本案例已预置标准的 Blockbench 皮肤工程文件 `beatrice.bbmodel`：
+- 支持使用 Blockbench 双击直接打开；
+- 预置 Alex (Slim 3px) 标准骨骼体系、UV 贴图与外层展开；
+- 支持在 3D 视口内实时自由涂鸦与微调像素。
+
